@@ -1,0 +1,7 @@
+.THIS .rightAlign {
+    text-align: right;
+}
+
+.THIS .warningBorder {
+    border: 1px dashed rgb(250, 180, 90);
+}

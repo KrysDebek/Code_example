@@ -1,0 +1,756 @@
+<aura:component description="OpportunitySummary"
+                implements="force:lightningQuickAction,flexipage:availableForAllPageTypes,force:hasRecordId"
+                controller="OpportunitySummaryController">
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="opportunityRecord" type="Object"/>
+    <aura:attribute name="showSpinner" type="Boolean" default="false"/>
+    <aura:attribute name="reasonsOfWon" type="List" default="[]"/>
+    <aura:attribute name="countries" type="List" default="[]"/>
+    <aura:attribute name="installments" type="List" default="[]"/>
+    <aura:attribute name="downPayments" type="List" default="[]"/>
+    <aura:attribute name="RODOAgreement" type="List" default="[]"/>
+    <aura:attribute name="RODOMarketingITP" type="List" default="[]"/>
+    <aura:attribute name="RODOMarketingNEAUVIA" type="List" default="[]"/>
+    <aura:attribute name="productDownPayments" type="List" default="[]"/>
+    <aura:attribute name="focTypes" type="List" default="[]"/>
+    <aura:attribute name="louisVuittonArtNumbers" type="List" default="[]"/>
+    <aura:attribute name="freeOfChargeItemsAdded" type="List" default="[]"/>
+    <aura:attribute name="teamMemberRoles" type="List" default="[]"/>
+    <aura:attribute name="teamMemberAccess" type="List" default="[]"/>
+    <aura:attribute name="marketingServiceTypes" type="List" default="[]"/>
+    <aura:attribute name="assetForSaleReservations" type="List" default="[]"/>
+    <aura:attribute name="labelsMap" type="Object" default="{}"/>
+    <aura:attribute name="opportunityFinalApprovalStage" type="String" default="Final Approval"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.initHandler}"/>
+
+    <aura:handler event="c:NotificationEvent" action="{!c.handleNotificationEvent}"/>
+
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <lightning:navigation aura:id="navService"/>
+
+    <c:ConfirmationDialog aura:id="opportunityConfirmationDialog" actionName="opportunityConfirmation">
+        <p class="slds-p-around_small">
+            <span class="slds-text-color_weak">{!v.labelsMap.OPPORTUNITY_AMOUNT}: </span><br/>
+            <lightning:formattedNumber
+                    style="currency"
+                    value="{!v.opportunityRecord.amount}"
+                    currencyCode="{!v.opportunityRecord.currencyIsoCode}"
+                    currencyDisplayAs="code"
+            />
+        </p>
+
+        <p class="slds-p-around_small">
+            <span class="slds-text-color_weak">{!v.labelsMap.PRODUCTS}: </span>
+            <lightning:input
+                    type="number"
+                    step="1"
+                    readonly="true"
+                    label="{!v.labelsMap.PRODUCTS}"
+                    value="{!v.opportunityRecord.products.length}"
+                    variant="label-hidden"
+            />
+        </p>
+
+        <p class="slds-p-around_small">
+            <span class="slds-text-color_weak">{!v.labelsMap.MEMBERS}: </span>
+            <lightning:input
+                    type="number"
+                    step="1"
+                    readonly="true"
+                    label="{!v.labelsMap.MEMBERS}"
+                    value="{!v.opportunityRecord.teamMembers.length}"
+                    variant="label-hidden"
+            />
+        </p>
+
+        <p class="slds-p-around_small">{!$Label.c.Opportunity_Confirmation_Warning}</p>
+    </c:ConfirmationDialog>
+
+    <div class="slds-is-relative">
+        <aura:if isTrue="{!v.showSpinner}">
+            <lightning:spinner size="large"/>
+        </aura:if>
+
+        <aura:if isTrue="{!OR(!not(v.opportunityRecord.isConfirmed) || v.opportunityRecord.stageName != v.opportunityFinalApprovalStage)}">
+            <lightning:card>
+                <aura:set attribute="body">
+                    <div class="slds-m-around_small">
+                        <lightning:layout horizontalAlign="space" verticalAlign="stretch" multipleRows="true">
+                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="12"
+                                                  largeDeviceSize="12" padding="around-small">
+                                <c:CollapsibleSection title="{!v.labelsMap.OPPORTUNITY}">
+                                    <div class="slds-box">
+                                        <lightning:layout horizontalAlign="space" verticalAlign="center"
+                                                          multipleRows="true">
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="12"
+                                                                  largeDeviceSize="12" padding="around-small">
+                                                <span class="slds-text-color_weak">{!v.labelsMap.OPPORTUNITY_AMOUNT}: </span><br/>
+                                                <lightning:formattedNumber
+                                                        style="currency"
+                                                        value="{!v.opportunityRecord.amount}"
+                                                        currencyCode="{!v.opportunityRecord.currencyIsoCode}"
+                                                        currencyDisplayAs="code"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_REASONWON}"
+                                                                  value="{!v.opportunityRecord.reasonOfWon}"
+                                                                  required="true" aura:id="fieldToValidate">
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.reasonsOfWon}" var="option">
+                                                        <option value="{!option.value}"
+                                                                selected="{!option.value==v.opportunityRecord.reasonOfWonFromSummary}"
+                                                                disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                        >
+                                                            {!option.label}
+                                                        </option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REALCLOSEDATE}"
+                                                                 type="date" aura:id="fieldToValidate"
+                                                                 disabled="true"
+                                                                 value="{!v.opportunityRecord.realCloseDate}"
+                                                                 required="true"/>
+                                            </lightning:layoutItem>
+
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6" largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{! v.labelsMap.OPPORTUNITY_SHARED_SALES }" value="{! v.opportunityRecord.sharedSales }" readonly="true" />
+                                            </lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6" largeDeviceSize="6" padding="around-small"></lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6" largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{! v.labelsMap.OPPORTUNITY_SALES_REPRESENTATIVE }" value="{! v.opportunityRecord.salesRepresentative }" readonly="true" />
+                                            </lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6" largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{! v.labelsMap.OPPORTUNITY_ADDITIONAL_SALES_REPRESENTATIVE }" value="{! v.opportunityRecord.additionalSalesRepresentative }" readonly="true" />
+                                            </lightning:layoutItem>
+
+                                            <!-- Free of Charge -->
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <div class="slds-section slds-is-open">
+                                                    <h3 class="slds-section__title slds-theme_shade">
+                                                        <span class="slds-truncate slds-p-horizontal_small"
+                                                              title="Free_of_Charge">Free of Charge</span>
+                                                    </h3>
+                                                </div>
+                                            </lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                  mediumDeviceSize="6" largeDeviceSize="6"
+                                                                  padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_FREE_OF_CHARGE_ITEMS_ADDED}"
+                                                                  value="{!v.opportunityRecord.freeOfChargeItemsAdded}"
+                                                                  disabled="true">
+                                                    <aura:iteration items="{!v.freeOfChargeItemsAdded}" var="option">
+                                                        <option value="{!option.value}" selected="{!option.value==v.opportunityRecord.freeOfChargeItemsAdded}">{!option.label}</option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="12"
+                                                                  largeDeviceSize="12" padding="around-small">
+                                                <lightning:textarea label="{!v.labelsMap.OPPORTUNITY_FREEOFCHARGEITEMS}"
+                                                                    disabled="true"
+                                                                    value="{!v.opportunityRecord.freeOfChargeItems}"/>
+                                            </lightning:layoutItem>
+
+                                           
+
+
+
+
+
+                                            <!-- CUSTOMER DETAILS -->
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <div class="slds-section slds-is-open">
+                                                    <h3 class="slds-section__title slds-theme_shade">
+                                                        <span class="slds-truncate slds-p-horizontal_small"
+                                                              title="Customer_Details">{!$Label.c.Customer_Details}</span>
+                                                    </h3>
+                                                </div>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_COMPANYINVNAME}"
+                                                                 type="text"
+                                                                 value="{!v.opportunityRecord.companyInvoiceName}"
+                                                                 required="true" aura:id="fieldToValidate"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_BILLINGSTREET}"
+                                                                 type="text" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.billingStreet}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_BILLINGCITY}"
+                                                                 type="text" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.billingCity}"
+                                                                 maxlength="40"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_BILLINGCODE}"
+                                                                 type="text" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.billingCode}"
+                                                                 maxlength="20"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_BILLINGCOUNTRY}"
+                                                                  value="{!v.opportunityRecord.billingCountry}"
+                                                                  required="true" aura:id="fieldToValidate"
+                                                                  disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                >
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.countries}" var="option">
+                                                        <option value="{!option.value}" selected="{!option.value==v.opportunityRecord.billingCountry}">{!option.label}</option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="4"
+                                                                  largeDeviceSize="4" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_NIP}" type="text"
+                                                                 maxlength="12" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.customerNip}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="4"
+                                                                  largeDeviceSize="4" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REGON}" type="text"
+                                                                 maxlength="14"
+                                                                 value="{!v.opportunityRecord.customerRegon}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="4"
+                                                                  largeDeviceSize="4" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_KRS}" type="text"
+                                                                 maxlength="10"
+                                                                 value="{!v.opportunityRecord.customerKrs}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+
+                                            <!--CLIENT REPRESENTATIVE-->
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <div class="slds-section slds-is-open">
+                                                    <h3 class="slds-section__title slds-theme_shade">
+                                                        <span class="slds-truncate slds-p-horizontal_small"
+                                                              title="Client_Representative">{!$Label.c.Client_Representative}</span>
+                                                    </h3>
+                                                </div>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REPFIRSTNAME}"
+                                                                 type="text" value="{!v.opportunityRecord.repFirstName}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                                 required="true" aura:id="fieldToValidate"/>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REPLASTNAME}"
+                                                                 type="text" value="{!v.opportunityRecord.repLastName}"
+                                                                 required="true" aura:id="fieldToValidate"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REPTITLE}" type="text"
+                                                                 value="{!v.opportunityRecord.repTitle}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REPPHONE}" type="tel"
+                                                                 maxlength="40"
+                                                                 value="{!v.opportunityRecord.repPhone}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_REPEMAIL}"
+                                                                 type="email" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.repEmail}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="0" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small"/>
+
+
+                                            <!--PAYMENT DELIVERY-->
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <div class="slds-section slds-is-open">
+                                                    <h3 class="slds-section__title slds-theme_shade">
+                                                        <span class="slds-truncate slds-p-horizontal_small"
+                                                              title="Payment_Delivery">{!$Label.c.Payment_and_Delivery}</span>
+                                                    </h3>
+                                                </div>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_CLOSEDATE}"
+                                                                 type="date" value="{!v.opportunityRecord.closeDate}"
+                                                                 required="true" aura:id="fieldToValidate"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_EINVOICE}"
+                                                                 type="checkbox"
+                                                                 checked="{!v.opportunityRecord.eInvoice}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_EINVOICE_EMAIL}"
+                                                                 type="email" aura:id="fieldToValidate" disabled="{!!v.opportunityRecord.eInvoice}"
+                                                                 value="{!v.opportunityRecord.eInvoiceEmail}"
+
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_SHIPSTREET}"
+                                                                 type="text" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.shippingStreet}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_SHIPCITY}" type="text"
+                                                                 maxlength="40" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.shippingCity}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:input label="{!v.labelsMap.OPPORTUNITY_SHIPCODE}" type="text"
+                                                                 maxlength="20" required="true" aura:id="fieldToValidate"
+                                                                 value="{!v.opportunityRecord.shippingCode}"
+                                                                 disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                />
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_SHIPCOUNTRY}"
+                                                                  value="{!v.opportunityRecord.shippingCountry}"
+                                                                  required="true" aura:id="fieldToValidate"
+                                                                  disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                >
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.countries}" var="option">
+                                                        <option value="{!option.value}" selected="{!option.value==v.opportunityRecord.shippingCountry}">{!option.label}</option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+
+                                            <lightning:layoutItem size="12" padding="around-small">
+                                                <div class="slds-section slds-is-open">
+                                                    <h3 class="slds-section__title slds-theme_shade">
+                                                        <span class="slds-truncate slds-p-horizontal_small"
+                                                              title="Agreements">Agreements</span>
+                                                    </h3>
+                                                </div>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_RODOAGREEMENT}"
+                                                                  value="{!v.opportunityRecord.rodoAgreement}"
+                                                                  disabled="true" aura:id="fieldToValidate">
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.RODOAgreement}" var="option">
+                                                        <option value="{!option.value}"
+                                                                selected="{!option.value==v.opportunityRecord.rodoAgreement}"
+                                                                disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                        >
+                                                            {!option.label}
+                                                        </option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_RODOMARKETINGITP}"
+                                                                  value="{!v.opportunityRecord.rodoMarketingITP}"
+                                                                  disabled="true" aura:id="fieldToValidate">
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.RODOMarketingITP}" var="option">
+                                                        <option value="{!option.value}"
+                                                                selected="{!option.value==v.opportunityRecord.rodoMarketingITP}"
+                                                                disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                        >
+                                                            {!option.label}
+                                                        </option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+                                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="6"
+                                                                  largeDeviceSize="6" padding="around-small">
+                                                <lightning:select label="{!v.labelsMap.OPPORTUNITY_RODOMARKETINGNEAUVIA}"
+                                                                  value="{!v.opportunityRecord.rodoMarketingNeauvia}"
+                                                                  disabled="true" aura:id="fieldToValidate">
+                                                    <option value="">{!$Label.c.Picklist_Select}</option>
+                                                    <aura:iteration items="{!v.RODOMarketingNEAUVIA}" var="option">
+                                                        <option value="{!option.value}"
+                                                                selected="{!option.value==v.opportunityRecord.rodoMarketingNeauvia}"
+                                                                disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                        >
+                                                            {!option.label}
+                                                        </option>
+                                                    </aura:iteration>
+                                                </lightning:select>
+                                            </lightning:layoutItem>
+
+                                        </lightning:layout>
+                                    </div>
+                                </c:CollapsibleSection>
+
+                                <c:CollapsibleSection title="{!v.labelsMap.PRODUCTS}" collapsed="false">
+                                    <aura:iteration items="{!v.opportunityRecord.products}" var="product">
+                                        <div class="{!product.isDeleted ? 'slds-box slds-m-bottom--medium warningBorder' : 'slds-box slds-m-bottom--medium'}">
+                                            <lightning:layout horizontalAlign="space" verticalAlign="stretch"
+                                                              multipleRows="true">
+                                                <aura:if isTrue="{!product.isDeleted}">
+                                                    <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                          mediumDeviceSize="12" largeDeviceSize="12"
+                                                                          padding="around-small">
+                                                        <c:AlertWarningBox>
+                                                            {!$Label.c.Opportunity_Summary_Delete_Alert}
+                                                        </c:AlertWarningBox>
+                                                    </lightning:layoutItem>
+                                                </aura:if>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small">
+                                                    <lightning:input label="{!v.labelsMap.PRODUCTS_PRODUCT}" type="text"
+                                                                     value="{!product.productName}" readonly="true"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:input label="{!v.labelsMap.PRODUCTS_QUANTITY}"
+                                                                     type="number" step="0.01"
+                                                                     disabled="true"
+                                                                     value="{!product.quantity}" required="true" aura:id="fieldToValidate"
+                                                    />
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <span class="slds-text-color_weak">{!v.labelsMap.PRODUCTS_PRICE}: </span><br/>
+                                                    <lightning:formattedNumber
+                                                            style="currency"
+                                                            value="{!product.salesPrice}"
+                                                            currencyCode="{!v.opportunityRecord.currencyIsoCode}"
+                                                            currencyDisplayAs="code"
+                                                    />
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small" alignmentBump="right">
+                                                    <lightning:input
+                                                            label="{!v.labelsMap.PRODUCTS_PERIODOFEXTENDEDWARRANTY}"
+                                                            type="number" step="1"
+                                                            value="{!product.periodOfExtendedWarranty}"
+                                                            disabled="true"
+                                                            fieldLevelHelp="{!v.labelsMap.PRODUCTS_PERIODOFEXTENDEDWARRANTY_HP}"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:select label="{!v.labelsMap.PRODUCTS_INSTALLMENTS}"
+                                                                      value="{!product.installments}"
+                                                                      disabled="true">
+                                                        <aura:iteration items="{!v.installments}" var="option">
+                                                            <option value="{!option.value}" selected="{!option.value==product.installments}">{!option.label}</option>
+                                                        </aura:iteration>
+                                                    </lightning:select>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small" alignmentBump="right">
+                                                    <lightning:input
+                                                            label="{!v.labelsMap.PRODUCTS_NUMBER_OF_INSTALLMENTS}"
+                                                            type="number" step="1"
+                                                            value="{!product.numberOfInstallments}"
+                                                            required="{!product.installments == 'Yes'}"
+                                                            aura:id="fieldToValidate"
+                                                            disabled="true"   />
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:select label="{!v.labelsMap.PRODUCTS_DOWN_PAYMENT}"
+                                                                      value="{!product.downPayment}"
+                                                                      disabled="true"   >
+                                                        <aura:iteration items="{!v.productDownPayments}" var="option">
+                                                            <option value="{!option.value}" selected="{!option.value==product.downPayment}">{!option.label}</option>
+                                                        </aura:iteration>
+                                                    </lightning:select>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small" alignmentBump="right">
+                                                    <lightning:input
+                                                            label="{!v.labelsMap.PRODUCTS_PERCENTAGE_OF_DOWN_PAYMENT}"
+                                                            type="number"
+                                                            step="1"
+                                                            formatter="percent-fixed"
+                                                            value="{!product.percentageOfDownPayment}"
+                                                            required="{!product.downPayment == 'Yes'}"
+                                                            aura:id="fieldToValidate"
+                                                            disabled="true"   />
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small" >
+                                                    <lightning:input label="{!v.labelsMap.PRODUCTS_DELIVERYAFTERFULLPAY}"
+                                                                     type="checkbox"
+                                                                     checked="{!product.deliveryAfterPayment}"
+                                                                     disabled="true"
+                                                    />
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small" >
+                                                    <lightning:input label="{!v.labelsMap.PRODUCTS_PLANNEDDELIVERYDATE}"
+                                                                     type="date"
+                                                                     value="{!product.plannedDeliveryDate}"
+                                                                     required="true" aura:id="fieldToValidate"
+                                                                     disabled="true"
+                                                    />
+                                                </lightning:layoutItem>
+                                                <aura:if isTrue="{!product.isResponsiblesAllowed}">
+                                                    <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                          mediumDeviceSize="12" largeDeviceSize="12"
+                                                                          padding="around-small">
+                                                        <lightning:checkboxGroup
+                                                                name="{!product.id}"
+                                                                label="{!$Label.c.Responsible}"
+                                                                options="{!v.opportunityRecord.teamMemberOptions}"
+                                                                value="{!product.settlement.selectedUsers}"
+                                                                disabled="true"
+                                                        />
+                                                    </lightning:layoutItem>
+                                                </aura:if>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small" class="rightAlign">
+                                                    <lightning:buttonGroup>
+                                                        <lightning:button variant="neutral" iconName="utility:undo"
+                                                                          label="Restore" value="{!product.id}"
+                                                                          onclick="{!c.handleProductRestoreAction}"
+                                                                          disabled="true"/>
+                                                        <lightning:button variant="destructive"
+                                                                          iconName="utility:delete" label="Delete"
+                                                                          value="{!product.id}"
+                                                                          onclick="{!c.handleProductDeleteAction}"
+                                                                          disabled="true"/>
+                                                    </lightning:buttonGroup>
+                                                </lightning:layoutItem>
+                                            </lightning:layout>
+                                        </div>
+                                    </aura:iteration>
+                                </c:CollapsibleSection>
+
+                                <c:CollapsibleSection title="{!v.labelsMap.MEMBERS}" collapsed="false">
+                                    <aura:iteration items="{!v.opportunityRecord.teamMembers}" var="teamMember">
+                                        <div class="{!teamMember.isDeleted ? 'slds-box slds-m-bottom--medium warningBorder' : 'slds-box slds-m-bottom--medium'}">
+                                            <lightning:layout horizontalAlign="space" verticalAlign="stretch"
+                                                              multipleRows="true">
+                                                <aura:if isTrue="{!teamMember.isDeleted}">
+                                                    <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                          mediumDeviceSize="12" largeDeviceSize="12"
+                                                                          padding="around-small">
+                                                        <c:AlertWarningBox>
+                                                            {!$Label.c.Opportunity_Summary_Delete_Alert}
+                                                        </c:AlertWarningBox>
+                                                    </lightning:layoutItem>
+                                                </aura:if>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small">
+                                                    <lightning:input label="{!v.labelsMap.MEMBERS_USER}" type="text"
+                                                                     value="{!teamMember.user}" readonly="true"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:select label="{!v.labelsMap.MEMBERS_ROLE}"
+                                                                      value="{!teamMember.role}" required="true" aura:id="fieldToValidate"
+                                                                      disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                    >
+                                                        <aura:iteration items="{!v.teamMemberRoles}" var="option">
+                                                            <option value="{!option.value}">{!option.label}</option>
+                                                        </aura:iteration>
+                                                    </lightning:select>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:select label="{!v.labelsMap.MEMBERS_ACCESS}"
+                                                                      value="{!teamMember.accessLevel}" required="true" aura:id="fieldToValidate"
+                                                                      disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                    >
+                                                        <aura:iteration items="{!v.teamMemberAccess}" var="option">
+                                                            <option value="{!option.value}">{!option.label}</option>
+                                                        </aura:iteration>
+                                                    </lightning:select>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small" class="rightAlign">
+                                                    <lightning:buttonGroup>
+                                                        <lightning:button variant="neutral" iconName="utility:undo"
+                                                                          label="Restore" value="{!teamMember.id}"
+                                                                          onclick="{!c.handleTeamMemberRestoreAction}"
+                                                                          disabled="{!not(teamMember.isDeleted)}"/>
+                                                        <lightning:button variant="destructive"
+                                                                          iconName="utility:delete" label="Delete"
+                                                                          value="{!teamMember.id}"
+                                                                          onclick="{!c.handleTeamMemberDeleteAction}"
+                                                                          disabled="{!OR(teamMember.isDeleted,v.opportunityRecord.stageName == v.opportunityFinalApprovalStage)}"/>
+                                                    </lightning:buttonGroup>
+                                                </lightning:layoutItem>
+                                            </lightning:layout>
+                                        </div>
+                                    </aura:iteration>
+                                </c:CollapsibleSection>
+
+                                <c:CollapsibleSection title="{!v.labelsMap.SERVICES}" collapsed="false">
+                                    <aura:iteration items="{!v.opportunityRecord.marketingServices}"
+                                                    var="marketingService">
+                                        <div class="{!marketingService.isDeleted ? 'slds-box slds-m-bottom--medium warningBorder' : 'slds-box slds-m-bottom--medium'}">
+                                            <lightning:layout horizontalAlign="space" verticalAlign="stretch"
+                                                              multipleRows="true">
+                                                <aura:if isTrue="{!marketingService.isDeleted}">
+                                                    <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                          mediumDeviceSize="12" largeDeviceSize="12"
+                                                                          padding="around-small">
+                                                        <c:AlertWarningBox>
+                                                            {!$Label.c.Opportunity_Summary_Delete_Alert}
+                                                        </c:AlertWarningBox>
+                                                    </lightning:layoutItem>
+                                                </aura:if>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:input label="{!v.labelsMap.SERVICES_NAME}" type="text"
+                                                                     value="{!marketingService.name}" readonly="true"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="6" largeDeviceSize="6"
+                                                                      padding="around-small">
+                                                    <lightning:input label="{!v.labelsMap.SERVICES_ACCOUNT}" type="text"
+                                                                     value="{!marketingService.account}"
+                                                                     readonly="true"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small">
+                                                    <lightning:select label="{!v.labelsMap.SERVICES_TYPE}"
+                                                                      disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                                      value="{!marketingService.type}" required="true" aura:id="fieldToValidate">
+                                                        <aura:iteration items="{!v.marketingServiceTypes}" var="option">
+                                                            <option value="{!option.value}">{!option.label}</option>
+                                                        </aura:iteration>
+                                                    </lightning:select>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small">
+                                                    <lightning:inputRichText label="{!v.labelsMap.SERVICES_DESCRIPTION}"
+                                                                             labelVisible="true"
+                                                                             disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                                             value="{!marketingService.description}"/>
+                                                </lightning:layoutItem>
+                                                <lightning:layoutItem size="12" smallDeviceSize="12"
+                                                                      mediumDeviceSize="12" largeDeviceSize="12"
+                                                                      padding="around-small" class="rightAlign">
+                                                    <lightning:buttonGroup>
+                                                        <lightning:button variant="neutral" iconName="utility:undo"
+                                                                          label="Restore" value="{!marketingService.id}"
+                                                                          onclick="{!c.handleMarketingServiceRestoreAction}"
+                                                                          disabled="{!not(marketingService.isDeleted)}"/>
+                                                        <lightning:button variant="destructive"
+                                                                          iconName="utility:delete" label="Delete"
+                                                                          value="{!marketingService.id}"
+                                                                          onclick="{!c.handleMarketingServiceDeleteAction}"
+                                                                          disabled="{!OR(marketingService.isDeleted,v.opportunityRecord.stageName == v.opportunityFinalApprovalStage)}"/>
+                                                    </lightning:buttonGroup>
+                                                </lightning:layoutItem>
+                                            </lightning:layout>
+                                        </div>
+                                    </aura:iteration>
+                                </c:CollapsibleSection>
+                            </lightning:layoutItem>
+
+                            <aura:if isTrue="{! not(empty(v.assetForSaleReservations)) }">
+                                <lightning:layoutItem size="12" padding="around-small">
+                                    <div class="slds-box warningBorder">
+                                        <p>{!$Label.c.Opportunity_Confirmation_Warning_Sold_Asset_Info}</p>
+                                        <aura:iteration var="reservation" items="{!v.assetForSaleReservations}">
+                                            <lightning:button variant="base" label="{!reservation.name}" class="slds-button" value="{!reservation.id}" onclick="{!c.navigateToRecord}"/> <br/>
+                                        </aura:iteration>
+                                    </div>
+                                </lightning:layoutItem>
+                            </aura:if>
+
+
+                            <lightning:layoutItem size="12" smallDeviceSize="12" mediumDeviceSize="12"
+                                                  largeDeviceSize="12" padding="around-small" class="rightAlign">
+                                <lightning:button variant="brand" iconName="utility:check" label="{!$Label.c.Confirm}"
+                                                  disabled="{!v.opportunityRecord.stageName == v.opportunityFinalApprovalStage}"
+                                                  onclick="{!c.confirmOpportunityAction}"/>
+                            </lightning:layoutItem>
+
+                        </lightning:layout>
+                    </div>
+                </aura:set>
+            </lightning:card>
+
+            <aura:set attribute="else">
+                <div class="slds-align_absolute-center">
+                    <lightning:layout multipleRows="false" verticalAlign="stretch" horizontalAlign="space">
+                        <lightning:layoutItem size="12">
+                            <div class="slds-illustration slds-illustration_small">
+                                <img src="/img/chatter/OpenRoad.svg" class="slds-illustration__svg" alt=""/>
+                                <div class="slds-text-longform">
+                                    <h3 class="slds-text-heading_medium">{!$Label.c.Opportunity_already_confirmed}</h3>
+                                </div>
+                            </div>
+                        </lightning:layoutItem>
+                    </lightning:layout>
+                </div>
+            </aura:set>
+        </aura:if>
+    </div>
+
+</aura:component>
